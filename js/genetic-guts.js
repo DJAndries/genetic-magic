@@ -37,10 +37,10 @@ function execute_simulation() {
 function mutate(chrom) {
     var out = ["", ""];
     for (i = 0; i < chrom[0].length; i++) {
-        out[0] += (chrom[0].charAt(i) == '1' || Math.random() < 0.3 ? "0" : "1");
+        out[0] += (chrom[0].charAt(i) == '1' ? "0" : "1");
     }
     for (i = 0; i < chrom[1].length; i++) {
-        out[1] += (chrom[1].charAt(i) == '1' || Math.random() < 0.3 ? "0" : "1");
+        out[1] += (chrom[1].charAt(i) == '1' ? "0" : "1");
     }
     return out;
 }
