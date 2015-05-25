@@ -123,7 +123,7 @@ function nextgeneration(angle, indexInGeneration, generation) {
             solution += "" + (i+1);
             opready = true;
         }
-        solution += "=" + ideal_sum + "\n";
+        solution += "=" + ideal_product + "\n";
         alert("Solution found!\n" + solution);
     }
     var newchrom = {
@@ -181,7 +181,7 @@ function stop() {
         solution += "" + (i+1);
         opready = true;
     }
-    solution += "=" + ideal_sum + "\n";
+    solution += "\n";
     opready = false;
     for (i = 0; i < data[maxIndex].data.length; i++) {
         if (data[maxIndex].data.charAt(i) != '1')
@@ -193,7 +193,7 @@ function stop() {
         solution += "" + (i+1);
         opready = true;
     }
-    solution += "=" + ideal_sum + "\n";
+    solution += "\n";
     alert("Closest solution (score " + data[maxIndex].score + "):\n" + solution);
 }
 
