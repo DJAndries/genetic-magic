@@ -1,5 +1,6 @@
 $( document ).ready(function() {
     $("#play-button").click(execute_simulation);
+    $("#stop-button").click(stop);
     window.onresize = display;
 });
 
@@ -11,6 +12,7 @@ var crossoverProb;
 var populationSize;
 var ideal_sum;
 var ideal_product;
+var maxGenerations;
 
 function execute_simulation() {
     if (validate() == false)
@@ -24,6 +26,7 @@ function execute_simulation() {
     mutationProb = parseFloat($("#mutation-text").val());
     crossoverProb = parseFloat($("#crossover-text").val());
     populationSize = parseInt($("#population-size-text").val());
+    maxGenerations = parseInt($("#max-gen-text").val());
     var population = generate_population(populationSize, parseInt($("#int-size-text").val()));
     scores = eval_scores(population);
     create_first_ring(scores, population);
@@ -34,10 +37,10 @@ function execute_simulation() {
 function mutate(chrom) {
     var out = ["", ""];
     for (i = 0; i < chrom[0].length; i++) {
-        out[0] += (chrom[0].charAt(i) == '1'  && Math.random() > 0.3 ? "0" : "1");
+        out[0] += (chrom[0].charAt(i) == '1' || Math.random() < 0.3 ? "0" : "1");
     }
     for (i = 0; i < chrom[1].length; i++) {
-        out[1] += (chrom[1].charAt(i) == '1' && Math.random() > 0.3 ? "0" : "1");
+        out[1] += (chrom[1].charAt(i) == '1' || Math.random() < 0.3 ? "0" : "1");
     }
     return out;
 }
@@ -64,11 +67,12 @@ function nextgeneration(angle, indexInGeneration, generation) {
     var chromdata = ["", ""];
     for (i = 0; i < 2; i++) {
         var index;
+        notaccepted = true;
         while (notaccepted){
             index = parseInt(data.length*Math.random());
-            if (data[index].generation != generation-1 || (index == indices[0]))
+            if (data[index].generation != generation-1)
                 continue;
-            if(Math.random()<data[index].score) {notaccepted=false;}
+            if(Math.random()<data[index].score && index != indices[0]) {notaccepted=false;}
         }
         indices[i] = index;
         chromdata[i] = data[index].data;
@@ -88,8 +92,42 @@ function nextgeneration(angle, indexInGeneration, generation) {
     
     var score1 = eval_score(chromdata[0]);
     var score2 = eval_score(chromdata[1]);
+    var solchrom = "";
+    if (score1 == 1.0)
+        solchrom = chromdata[0];
+    if (score2 == 1.0)
+        solchrom = chromdata[1];
+    if (solchrom != "") {
+        
+        window.clearInterval(interval);
+        var solution = "";
+        var opready = false;
+        for (i = 0; i < solchrom.length; i++) {
+            if (solchrom.charAt(i) != '0')
+                continue;
+            if (opready) {
+                solution += "+"
+            }
+            solution += "" + (i+1);
+            opready = true;
+        }
+        solution += "=" + ideal_sum + "\n";
+        opready = false;
+        for (i = 0; i < solchrom.length; i++) {
+            if (solchrom.charAt(i) != '1')
+                continue;
+            if (opready) {
+                solution += "x"
+                opdone = true;
+            }
+            solution += "" + (i+1);
+            opready = true;
+        }
+        solution += "=" + ideal_sum + "\n";
+        alert("Solution found!\n" + solution);
+    }
     var newchrom = {
-        radius: 20, 
+        radius: 70, 
         angle: angle, 
         score: score1,
         generation: generation,
@@ -98,7 +136,7 @@ function nextgeneration(angle, indexInGeneration, generation) {
     data.push(newchrom);
     angle += (360.0 / populationSize);
     newchrom = {
-        radius: 20, 
+        radius: 70, 
         angle: angle, 
         score: score2,
         generation: generation,
@@ -119,10 +157,50 @@ function nextgeneration(angle, indexInGeneration, generation) {
     return out;
 }
 
+function stop() {
+    if (data.length < 1)
+        return;
+    window.clearInterval(interval);
+    var lastgen = data[data.length-1].generation;
+    var max = 0.0;
+    var maxIndex = -1;
+    for (i = data.length-1; i >= 0 && data[i].generation == lastgen; i--) {
+        if (data[i].score >= max) {
+            max = data[i].score;
+            maxIndex = i;
+        }
+    }
+    var solution = "";
+    var opready = false;
+    for (i = 0; i < data[maxIndex].data.length; i++) {
+        if (data[maxIndex].data.charAt(i) != '0')
+            continue;
+        if (opready) {
+            solution += "+"
+        }
+        solution += "" + (i+1);
+        opready = true;
+    }
+    solution += "=" + ideal_sum + "\n";
+    opready = false;
+    for (i = 0; i < data[maxIndex].data.length; i++) {
+        if (data[maxIndex].data.charAt(i) != '1')
+            continue;
+        if (opready) {
+            solution += "x"
+            opdone = true;
+        }
+        solution += "" + (i+1);
+        opready = true;
+    }
+    solution += "=" + ideal_sum + "\n";
+    alert("Closest solution (score " + data[maxIndex].score + "):\n" + solution);
+}
+
 function update() {
     if (newgendata != null) {
         newgendata.starttime += 32;
-        if (newgendata.starttime > 10) {
+        if (newgendata.starttime > 20) {
             if (newgendata.indexInGeneration + 1 >= populationSize)
                 newgendata = null;
             else
@@ -139,7 +217,10 @@ function update() {
                 data.splice(i,1);
         }
         if (radiusmin >= 200) {
-            newgendata = nextgeneration(0, 0, data[data.length-1].generation+1);
+            if (data[data.length-1].generation+1 >= maxGenerations)
+                stop();
+            else
+                newgendata = nextgeneration(0, 0, data[data.length-1].generation+1);
         }
     }
     display();
@@ -155,7 +236,7 @@ function create_first_ring(scores, population) {
     var currentAngle = 0.0;
     for (i = 0; i < scores.length; i++) {
         var newobj = {
-            radius: 20, 
+            radius: 50, 
             angle: currentAngle, 
             score: scores[i],
             generation: 0,
@@ -172,7 +253,7 @@ function display() {
     context.canvas.width  = window.innerWidth - 19;
     var centerX = canvas.width / 2;
     var centerY = canvas.height / 2;
-    var radius = 10 + (10 * (canvas.width / 1920)) - ((data.length / 1000) * 9.8);
+    var radius = 10 + (10 * (canvas.width / 1920)) - ((populationSize / 1000) * 9.8);
     
     for (i = 0; i < data.length; i++) {
         var iradius = data[i].radius * (canvas.width / 1920);
